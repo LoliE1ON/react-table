@@ -1,19 +1,32 @@
 import React, {useEffect, useState} from "react";
 
 import 'bootstrap/dist/css/bootstrap.min.css';
-import "./styles.css";
+import "./matrixStyles.css";
 
-const MatrixTable = () => {
+const MatrixTable = ({newItemOptions = [], newItemCriterions = []}) => {
 
-    const [criterions, setCriterions] = useState([
-        { name: 'criterion', points: 2, editable: false },
-        { name: 'criterion 2', points: 2, editable: false },
-    ]);
+    const [criterions, setCriterions] = useState([]);
+    const [options, setOptions] = useState([]);
+    const [remove, setRemove] = useState({
+        criterion: -1, // or index for remove
+        option: -1, // or index for remove
+    });
 
-    const [options, setOptions] = useState([
-        { name: 'option 1', criterions: [5, 5], summary: 0, editable: false },
-        { name: 'option 2', criterions: [2, 4], summary: 0, editable: false },
-    ]);
+    // Add new options
+    useEffect(() => {
+        if (newItemOptions[0]) setOptions(prevState => [
+            ...prevState,
+            ...newItemOptions
+        ])
+    }, [newItemOptions]);
+
+    // Add new criterions
+    useEffect(() => {
+        if (newItemCriterions[0]) setCriterions(prevState => [
+            ...prevState,
+            ...newItemCriterions
+        ])
+    }, [newItemCriterions]);
 
     // Close all editable columns
     useEffect(() => {
@@ -21,6 +34,7 @@ const MatrixTable = () => {
         return () => document.body.removeEventListener('click', onBodyClick);
     });
 
+    // Computed new criterions for options
     useEffect(() => {
         setOptions(prevState => prevState.map(option => ({
             ...option,
@@ -31,27 +45,22 @@ const MatrixTable = () => {
     // Change criterion points for option
     const onChangeOptionCriterion = (optionKey, criterionKey, value) => {
         setOptions(prevState => prevState.map((option, key) => {
-            if (key === optionKey) {
-                return {
-                    ...option,
-                    criterions: option.criterions.map((criterion, key) => {
-                        if (key === criterionKey) return (value > 10 ? 10 : value)
-                        else return criterion
-                    })
-                }
-            } else return option
+            return key === optionKey ? {
+                ...option,
+                criterions: option.criterions.map((criterion, key) => {
+                    return key === criterionKey ?  (value > 10 ? 10 : value) : criterion
+                })
+            } : option
         }));
     };
 
     // Change criterion points
     const onChangeCriterionPoints = (criterionKey, value) => {
         setCriterions(prevState => prevState.map((criterion, key) => {
-            if (key === criterionKey) {
-                return {
-                    ...criterion,
-                    points: (value > 5 ? 5 : value)
-                }
-            } else return criterion
+            return key === criterionKey ? {
+                ...criterion,
+                points: (value > 5 ? 5 : value)
+            } : criterion
         }))
     };
 
@@ -59,37 +68,30 @@ const MatrixTable = () => {
     const onEditableOption = (optionKey, value, e) => {
         if (e.target.tagName === "INPUT") return;
         setOptions(prevState => prevState.map((option, key) => {
-            if (key === optionKey) {
-                return {
-                    ...option,
-                    editable: value
-                }
-            } else return option
+            return key === optionKey ? {
+                ...option,
+                editable: value
+            } : option
         }));
-        console.log("lol", value)
     };
 
-    // set option name
+    // Set option name
     const setOptionName = (optionKey, value) => {
         setOptions(prevState => prevState.map((option, key) => {
-            if (key === optionKey) {
-                return {
+            return key === optionKey ? {
                     ...option,
                     name: value
-                }
-            } else return option
+            } : option
         }));
     };
 
-    // set critetion name
+    // Set critetion name
     const setCriterionName = (ctiretionKey, value) => {
         setCriterions(prevState => prevState.map((criteria, key) => {
-            if (key === ctiretionKey) {
-                return {
-                    ...criteria,
-                    name: value
-                }
-            } else return criteria
+            return key === ctiretionKey ? {
+                ...criteria,
+                name: value
+            } : criteria
         }));
     };
 
@@ -97,34 +99,41 @@ const MatrixTable = () => {
     const onEditableCriterion = (ctiretionKey, value, e) => {
         if (e.target.tagName === "INPUT") return;
         setCriterions(prevState => prevState.map((criteria, key) => {
-            if (key === ctiretionKey) {
-                return {
-                    ...criteria,
-                    editable: value
-                }
-            } else return criteria
+            return key === ctiretionKey ? {
+                ...criteria,
+                editable: value
+            } : criteria
         }));
     };
 
     // Close all editable columns
     const onBodyClick = (e) => {
-        if (e.target.tagName === "INPUT") return;
-        setOptions(prevState => prevState.map((option, key) => ({
-            ...option,
-            editable: false
-        })));
+        if (e.target.tagName !== "INPUT") {
+            setOptions(prevState => prevState.map((option, key) => ({
+                ...option,
+                editable: false
+            })));
 
-        setCriterions(prevState => prevState.map((criterion, key) => ({
-            ...criterion,
-            editable: false
-        })));
+            setCriterions(prevState => prevState.map((criterion, key) => ({
+                ...criterion,
+                editable: false
+            })));
+        }
+
+        const cols = document.querySelectorAll("#matrix > .row > .col");
+
+
+        const parent = e.target.tagName === "INPUT" ? e.target.parentNode : e.target;
+        cols.forEach(elem => {
+            if(parent !== elem) elem.classList.remove("selected-col");
+        })
 
     };
 
     // Add new option
     const addNewOption = () => {
         setOptions(prevState => [...prevState,
-            { name: 'new option', criterions: criterions.map(() => 0), summary: 0, editable: false },
+            { name: 'new option', criterions: criterions.map(() => 0), summary: 0, editable: true },
         ]);
     };
 
@@ -135,16 +144,55 @@ const MatrixTable = () => {
         ]);
     };
 
+    // Remove option
+    const removeOption = () => {
+        setOptions(prevState => {
+            const arr = [];
+            prevState.forEach((option, key) => {
+               if (remove.option !== key) arr.push(option)
+            });
+            return arr
+        });
+        setRemove({
+            option: -1,
+            criterion: -1,
+        });
+    };
+
+    // Remove critetia
+    const removeCriteria = () => {
+        setCriterions(prevState => {
+            const arr = [];
+            prevState.forEach((criteria, key) => {
+                if (remove.criterion !== key) arr.push(criteria)
+            });
+            return arr
+        });
+        setRemove({
+            option: -1,
+            criterion: -1,
+        });
+    };
+
+    // Select remove item
+    const onSelectRemoveItem = (params = {criterion: -1, option: -1}) => {
+        setRemove(prevState => ({
+            criterion: params.criterion,
+            option: params.option,
+        }));
+    };
+
     return (
-        <div className="container pt-5">
+        <div id="matrix" className="container pt-5">
 
-            <div className="row pb-3">
-                <div className="btn-group" role="group">
+            <div className="row pb-5">
+                <div className="btn-group mr-2" id="matrix-btn-control" role="group">
                     <button type="button" className="btn btn-secondary" onClick={addNewCriterion}>Add criteria</button>
-                    <button type="button" className="btn btn-secondary">Remove criteria</button>
-
+                    <button type="button" className="btn btn-secondary" onClick={removeCriteria} disabled={remove.criterion < 0}>Remove criteria</button>
+                </div>
+                <div className="btn-group" id="matrix-btn-control" role="group">
                     <button type="button" className="btn btn-secondary" onClick={addNewOption}>Add option</button>
-                    <button type="button" className="btn btn-secondary">Remove option</button>
+                    <button type="button" className="btn btn-secondary" onClick={removeOption} disabled={remove.option < 0}>Remove option</button>
                 </div>
             </div>
 
@@ -153,19 +201,24 @@ const MatrixTable = () => {
                 <div className="col p-2 border "></div>
 
                 { criterions.map((criterion, key) => {
+
                     return (
-                        <div key={key} className="col p-2 border cp" onClick={(e) => onEditableCriterion (key, !criterion.editable, e)}>
+                        <div key={key} className="col p-2 border cp" onClick={(e) => {
+                            onEditableCriterion (key, !criterion.editable, e);
+                            onSelectRemoveItem({ criterion: key, option: -1});
+                            if (e.target.tagName !== "INPUT") e.target.classList.add("selected-col");
+                        }}>
+
                             {
                                 criterion.editable ?
                                     <input
                                         className="matrix-input"
-                                        autoFocus="true"
+                                        autoFocus
                                         type="text"
                                         value={criterion.name}
                                         onChange={(e) => setCriterionName(key, e.target.value)}
                                     />
-                                :
-                                    criterion.name
+                                : criterion.name
                         }
                         </div>
                     );
@@ -179,12 +232,19 @@ const MatrixTable = () => {
                 <div className="col p-2 border"><b>Weight</b></div>
 
                 { criterions.map((criterion, key) => (
-                    <div className="col p-2 border text-right" key={key}>
+                    <div className="col p-2 border text-right" onClick={(e) => {
+                        onSelectRemoveItem({ criterion: key, option: -1});
+                        if (e.target.tagName !== "INPUT") e.target.classList.add("selected-col");
+                    }} key={key}>
                         <input type="number"
                                className="input-nums"
                                autoFocus
                                onChange={ (e) => onChangeCriterionPoints(key, +e.target.value)}
                                value={criterion.points}
+                               onClick={(e) => {
+                                   onSelectRemoveItem({ criterion: key, option: -1})
+                                   e.target.parentNode.classList.add("selected-col");
+                               }}
                                min="1"
                                max="5"
                         />
@@ -196,29 +256,42 @@ const MatrixTable = () => {
 
             { options.map((option, optionKey) => (
                 <div key={optionKey} className="row">
+                    <div className="col p-2 border " onClick={(e) => {
+                        onSelectRemoveItem({ criterion: -1, option: optionKey})
+                        if (e.target.tagName !== "INPUT") e.target.classList.add("selected-col");
+                    }}>
 
-                    <div className="col p-2 border">
                         { option.editable ?
 
                                 <input
                                     type="text"
-                                    autoFocus="true"
+                                    autoFocus
                                     value={option.name}
                                     onChange={(e) => setOptionName(optionKey, e.target.value)}
                                 />
                             :
-                            <div className="cp" onClick={(e) => onEditableOption(optionKey, true, e)}>
+                            <div className="cp" onClick={(e) => {
+                                onEditableOption(optionKey, true, e)
+                                e.target.parentNode.classList.add("selected-col");
+                            }}>
                                 { option.name }
                             </div>
                         }
                     </div>
 
                     { criterions.map((criterion, criterionKey) => (
-                        <div className="col p-2 border text-right" key={criterionKey}>
+                        <div className="col p-2 border text-right" onClick={(e) => {
+                            onSelectRemoveItem({ criterion: criterionKey, option: optionKey})
+                            if (e.target.tagName !== "INPUT") e.target.classList.add("selected-col");
+                        }} key={criterionKey}>
                             <input className="input-nums" type="number"
                                    onChange={ (e) => onChangeOptionCriterion(optionKey, criterionKey, +e.target.value)}
                                    value={option.criterions[criterionKey] || 0 }
                                    min="0"
+                                   onClick={(e) => {
+                                       onSelectRemoveItem({ criterion: criterionKey, option: optionKey})
+                                       e.target.parentNode.classList.add("selected-col");
+                                   }}
                                    max="10"
                             />
                         </div>

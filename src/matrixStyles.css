@@ -16,3 +16,11 @@ input {
 .cp {
     cursor: pointer;
 }
+
+.selected-col {
+    background: #ededed;
+}
+
+#matrix-btn-control > button:disabled {
+    cursor: not-allowed!important;
+}
